@@ -206,7 +206,7 @@ cocuk_ay = st.sidebar.number_input("Ay:", min_value=0, max_value=72, value=24, s
 st.sidebar.write(f"Seçilen Yaş: **{cocuk_ay} Aylık**")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Hazırlayan:**\n\nAdnan Menderes Üniversitesi\nÖzel Eğitim Bölümü Öğrencisi")
+st.sidebar.markdown("**Hazırlayan:**\n\nAdnan Menderes Üniversitesi\nÖzel Eğitim Bölümü Öğrencisi Eray CANGEL")
 
 # --- ANA EKRAN (HEADER) ---
 col1, col2 = st.columns([1, 5])
