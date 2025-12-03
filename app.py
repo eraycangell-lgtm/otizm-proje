@@ -2,195 +2,315 @@ import streamlit as st
 from fpdf import FPDF
 import datetime
 
-# --- AYARLAR ---
-st.set_page_config(page_title="Gelişimsel Tarama Projesi", layout="centered")
+# --- SAYFA AYARLARI ---
+st.set_page_config(page_title="Gelişimsel Tarama & Erken Tanı", layout="centered")
 
 # --- TÜRKÇE KARAKTER DÜZELTİCİ (PDF İÇİN) ---
-# FPDF kütüphanesi standart fontlarla Türkçe karakterleri bazen bozuk basabilir.
-# Bu fonksiyon, PDF basılırken karakterleri düzeltir.
+# PDF kütüphanesi Türkçe karakterleri basarken hata vermesin diye bu fonksiyonu kullanıyoruz.
 def tr_duzelt(text):
     ceviri = str.maketrans("ğĞıİşŞçÇöÖüÜ", "gGiIsScCoOuU")
     return text.translate(ceviri)
 
-# --- SORU VERİTABANI (Resim ve Yaş Bilgisi Eklendi) ---
+# --- GENİŞLETİLMİŞ SORU HAVUZU ---
 # min_ay: Soru en az kaç aylık çocuğa sorulmalı?
 # max_ay: Soru en fazla kaç aylık çocuğa sorulmalı?
-# gorsel: Buraya internetten bulduğun GIF veya Resim linkini yapıştıracaksın.
+# gorsel: Buraya internetten bulduğun .gif veya .jpg linkini yapıştırabilirsin.
 sorular = [
+    # --- 0-12 AY (ERKEN BEBEKLİK DÖNEMİ) ---
     {
         "id": 1,
-        "soru": "İsmiyle seslendiğinizde dönüp size bakar mı?",
+        "soru": "Yüksek bir ses duyduğunda (kapı çarpması gibi) irkilir veya ağlar mı? (İşitme tepkisi)",
         "risk_cevabi": "Hayır",
-        "min_ay": 6, "max_ay": 60,
-        "gorsel": None # Örnek: "https://ornek.com/resim1.jpg"
+        "min_ay": 0, "max_ay": 12,
+        "gorsel": None
     },
     {
         "id": 2,
-        "soru": "Sizinle oynarken gözlerinizin içine bakar mı?",
+        "soru": "Emzirirken veya mama verirken gözlerinizin içine bakar mı?",
         "risk_cevabi": "Hayır",
-        "min_ay": 0, "max_ay": 60,
+        "min_ay": 2, "max_ay": 24,
         "gorsel": None
     },
     {
         "id": 3,
-        "soru": "İstediği bir şeyi parmağıyla işaret ederek gösterir mi?",
+        "soru": "Siz ona gülümsediğinizde, o da size gülümseyerek karşılık verir mi?",
         "risk_cevabi": "Hayır",
-        "min_ay": 9, "max_ay": 60,
-        "gorsel": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDExbnhwMnZ4bzFzbnhwMnZ4bzFzbnhwMnZ4bzFzbnhwMnZ4bzFzbnhwMnZ4byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjRrfIPjeiVyM/giphy.gif" # Örnek GIF
+        "min_ay": 3, "max_ay": 36,
+        "gorsel": None
     },
     {
         "id": 4,
-        "soru": "Siz bir yere baktığınızda o da sizin baktığınız yöne bakar mı? (Ortak Dikkat)",
-        "risk_cevabi": "Hayır",
-        "min_ay": 9, "max_ay": 60,
+        "soru": "Kucağınıza aldığınızda vücudunu aşırı kasma veya bez bebek gibi yığılma durumu olur mu?",
+        "risk_cevabi": "Evet",
+        "min_ay": 1, "max_ay": 24,
         "gorsel": None
     },
     {
         "id": 5,
-        "soru": "Heyecanlandığında ellerini kanat gibi çırpar mı?",
+        "soru": "İnsan yüzlerine bakmak yerine, sürekli tavandaki ışığa veya dönen pervaneye mi odaklanıyor?",
         "risk_cevabi": "Evet",
-        "min_ay": 12, "max_ay": 60,
+        "min_ay": 4, "max_ay": 36,
         "gorsel": None
     },
     {
         "id": 6,
-        "soru": "Kendi etrafında amaçsızca döner mi?",
-        "risk_cevabi": "Evet",
-        "min_ay": 18, "max_ay": 60,
+        "soru": "'Agu', 'buu' gibi sesler çıkararak sizinle karşılıklı sesli iletişim kurmaya çalışır mı?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 6, "max_ay": 24,
         "gorsel": None
     },
     {
         "id": 7,
-        "soru": "Parmak ucunda yürüme davranışı var mı?",
-        "risk_cevabi": "Evet",
-        "min_ay": 24, "max_ay": 60,
+        "soru": "Kucağa alınmak istediğinde kollarını size doğru uzatır mı?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 7, "max_ay": 36,
         "gorsel": None
     },
     {
         "id": 8,
-        "soru": "Oyuncağıyla amacına uygun oynamak yerine tekerleklerini döndürür mü?",
-        "risk_cevabi": "Evet",
-        "min_ay": 18, "max_ay": 60,
-        "gorsel": None
-    },
-    {
-        "id": 9,
-        "soru": "Basit taklit becerileri (alkış, bay bay) var mı?",
+        "soru": "'Ce-eee' (Peek-a-boo) gibi oyunlar oynadığınızda keyif alır ve katılır mı?",
         "risk_cevabi": "Hayır",
         "min_ay": 9, "max_ay": 36,
         "gorsel": None
     },
+
+    # --- 12-24 AY (KRİTİK SOSYAL GELİŞİM) ---
+    {
+        "id": 9,
+        "soru": "İsmiyle seslendiğinizde (başka bir şeyle meşgul olsa bile) dönüp size bakar mı?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 12, "max_ay": 72,
+        "gorsel": None
+    },
     {
         "id": 10,
-        "soru": "Oyuncaklarla 'evcilik' gibi -mış gibi oyunlar oynar mı?",
+        "soru": "İstediği bir oyuncağı parmağıyla işaret ederek gösterir mi? (İşaret etme)",
         "risk_cevabi": "Hayır",
-        "min_ay": 24, "max_ay": 60,
+        "min_ay": 14, "max_ay": 72,
+        "gorsel": None # Buraya işaret eden bebek GIF'i koyabilirsin
+    },
+    {
+        "id": 11,
+        "soru": "Siz odanın bir köşesine baktığınızda, o da sizin baktığınız yere bakar mı? (Ortak Dikkat)",
+        "risk_cevabi": "Hayır",
+        "min_ay": 14, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 12,
+        "soru": "Bir nesneyi sadece size 'göstermek' ve ilgisini paylaşmak için getirdiği olur mu?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 15, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 13,
+        "soru": "Bay-bay yapma, alkışlama, öpücük atma gibi hareketleri taklit eder mi?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 12, "max_ay": 48,
+        "gorsel": None
+    },
+    {
+        "id": 14,
+        "soru": "Oyuncak arabayı sürmek yerine sadece tekerleklerini döndürmekle ilgilenir mi?",
+        "risk_cevabi": "Evet",
+        "min_ay": 18, "max_ay": 72,
+        "gorsel": None
+    },
+
+    # --- 24+ AY (STEREOTİPİ VE İLERİ BECERİLER) ---
+    {
+        "id": 15,
+        "soru": "Heyecanlandığında veya boş kaldığında ellerini kanat gibi çırpar mı?",
+        "risk_cevabi": "Evet",
+        "min_ay": 18, "max_ay": 72,
+        "gorsel": None # Buraya el çırpma GIF'i koyabilirsin
+    },
+    {
+        "id": 16,
+        "soru": "Kendi etrafında amaçsızca defalarca döner mi?",
+        "risk_cevabi": "Evet",
+        "min_ay": 18, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 17,
+        "soru": "Parmak ucunda yürüme davranışı var mı?",
+        "risk_cevabi": "Evet",
+        "min_ay": 24, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 18,
+        "soru": "Oyuncakları veya ev eşyalarını yan yana/üst üste dizme takıntısı var mı?",
+        "risk_cevabi": "Evet",
+        "min_ay": 24, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 19,
+        "soru": "Yüksek seslerden (süpürge, mikser vb.) aşırı korkup kulaklarını kapatır mı?",
+        "risk_cevabi": "Evet",
+        "min_ay": 24, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 20,
+        "soru": "Oyuncaklarla 'mış gibi' (muzdan telefon yapmak, bebeğe yemek yedirmek) oyunlar kurar mı?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 24, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 21,
+        "soru": "Diğer çocuklara ilgi gösterir mi, onlarla oynamak ister mi?",
+        "risk_cevabi": "Hayır",
+        "min_ay": 36, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 22,
+        "soru": "Rutinleri bozulduğunda (örneğin markete farklı yoldan gitmek) aşırı öfke nöbeti geçirir mi?",
+        "risk_cevabi": "Evet",
+        "min_ay": 36, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 23,
+        "soru": "Konuşması yaşıtlarına göre belirgin derecede geride mi?",
+        "risk_cevabi": "Evet",
+        "min_ay": 24, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 24,
+        "soru": "Söylediklerinizi veya reklamlardaki sözleri anlamsızca tekrar eder mi? (Ekolali)",
+        "risk_cevabi": "Evet",
+        "min_ay": 30, "max_ay": 72,
+        "gorsel": None
+    },
+    {
+        "id": 25,
+        "soru": "Parmaklarını gözünün hemen önünde hareket ettirip onlara dalar mı?",
+        "risk_cevabi": "Evet",
+        "min_ay": 18, "max_ay": 72,
         "gorsel": None
     }
-    # Buraya daha fazla soru ekleyebilirsin...
 ]
 
-# --- BAŞLIK VE GİRİŞ ---
-st.title("🧩 Gelişimsel Takip Sistemi")
-st.markdown("Adnan Menderes Üniversitesi - Özel Eğitim Projesi")
-st.info("Bu sistem, çocuğunuzun ayına uygun soruları seçerek gelişimsel riskleri analiz eder ve doktorunuz için bir ön rapor oluşturur.")
+# --- ARAYÜZ (FRONTEND) ---
+st.title("🧩 Erken Tanı ve Gelişim Takip Sistemi")
+st.markdown("**Adnan Menderes Üniversitesi - Özel Eğitim Bölümü Projesi**")
+st.info("Bu sistem, ailelerin çocuklarında gözlemledikleri gelişimsel riskleri erken fark etmeleri için tasarlanmış bir ön tarama aracıdır.")
 
-# --- ÖZELLİK 3: YAŞA GÖRE FİLTRELEME ---
+# Yan Menü (Sidebar)
 st.sidebar.header("Çocuk Bilgileri")
-cocuk_ay = st.sidebar.number_input("Çocuğunuz kaç aylık?", min_value=0, max_value=72, value=24)
-st.sidebar.write(f"Seçilen yaş: **{cocuk_ay} Aylık**")
+st.sidebar.write("Lütfen çocuğunuzun ayını giriniz.")
+cocuk_ay = st.sidebar.number_input("Ay:", min_value=0, max_value=72, value=12, step=1)
+st.sidebar.write(f"Seçilen: **{cocuk_ay} Aylık**")
 
-# Soruları yaşa göre filtrele
+# --- SORU FİLTRELEME MANTIĞI ---
+# Çocuğun yaşına uygun (min_ay ve max_ay aralığındaki) soruları seç
 filtrelenmis_sorular = [s for s in sorular if s["min_ay"] <= cocuk_ay <= s["max_ay"]]
 
-if len(filtrelenmis_sorular) == 0:
-    st.warning("Bu yaş grubu için tanımlı soru bulunamadı.")
+if not filtrelenmis_sorular:
+    st.warning("Bu yaş grubu için henüz yeterli soru girişi yapılmamıştır.")
 else:
-    st.write(f"Çocuğunuzun yaşına uygun **{len(filtrelenmis_sorular)} adet** soru listelendi.")
+    st.success(f"Çocuğunuzun yaşına ({cocuk_ay} ay) uygun **{len(filtrelenmis_sorular)} adet** kontrol sorusu listelendi.")
     st.write("---")
 
     # --- FORM BAŞLANGICI ---
     cevaplar = {}
     with st.form("tarama_formu"):
         
-        for soru_data in filtrelenmis_sorular:
-            st.subheader(f"Soru: {soru_data['soru']}")
+        for soru in filtrelenmis_sorular:
+            st.subheader(soru["soru"])
             
-            # --- ÖZELLİK 1: GÖRSEL DESTEK ---
-            if soru_data["gorsel"]:
-                st.image(soru_data["gorsel"], caption="Örnek Davranış", width=300)
+            # Eğer soruda görsel linki varsa göster
+            if soru["gorsel"]:
+                try:
+                    st.image(soru["gorsel"], caption="Örnek Gösterim", width=300)
+                except:
+                    pass # Link bozuksa hata verme, geç
             
-            # Soru Seçenekleri
-            secim = st.radio("Cevabınız:", ["Seçiniz...", "Evet", "Hayır"], key=soru_data["id"])
-            cevaplar[soru_data["id"]] = secim
+            # Evet/Hayır Seçenekleri
+            secim = st.radio("Bu davranışı gözlemliyor musunuz?", ["Seçiniz...", "Evet", "Hayır"], key=soru["id"])
+            cevaplar[soru["id"]] = secim
             st.markdown("---")
         
-        gonder = st.form_submit_button("Analizi Tamamla")
+        gonder_butonu = st.form_submit_button("Analizi Tamamla ve Raporla")
 
-    # --- SONUÇ VE RAPORLAMA ---
-    if gonder:
-        # Boş cevap kontrolü
+    # --- SONUÇ HESAPLAMA VE RAPORLAMA ---
+    if gonder_butonu:
+        # 1. Boş Cevap Kontrolü
         if "Seçiniz..." in cevaplar.values():
-            st.error("Lütfen tüm soruları cevaplayınız.")
+            st.error("Lütfen tüm soruları cevaplayınız. Eksik cevaplar analizi etkileyebilir.")
         else:
-            risk_sayisi = 0
+            # 2. Risk Hesaplama
+            risk_puani = 0
             riskli_maddeler = []
 
             for s in filtrelenmis_sorular:
-                kullanici_cevabi = cevaplar[s["id"]]
-                if kullanici_cevabi == s["risk_cevabi"]:
-                    risk_sayisi += 1
+                verilen_cevap = cevaplar[s["id"]]
+                if verilen_cevap == s["risk_cevabi"]:
+                    risk_puani += 1
                     riskli_maddeler.append(s["soru"])
-
-            # Ekrana Yazdırma
-            if risk_sayisi >= 3:
-                st.error(f"⚠️ **Yüksek Risk:** Toplam {risk_sayisi} belirti tespit edildi.")
-                st.write("Bir çocuk psikiyatristine başvurmanız önerilir.")
-            elif risk_sayisi >= 1:
-                st.warning(f"⚠️ **Takip Önerilir:** Toplam {risk_sayisi} belirti tespit edildi.")
+            
+            # 3. Ekrana Sonuç Yazdırma
+            st.header("Değerlendirme Sonucu")
+            
+            if risk_puani >= 3:
+                st.error(f"⚠️ **YÜKSEK RİSK BELİRTİSİ ({risk_puani} Madde)**")
+                st.write("Çocuğunuzda otizm spektrum bozukluğu veya gelişimsel gecikme ile ilişkilendirilebilecek çok sayıda belirti gözlemlendi.")
+                st.write("**Öneri:** Vakit kaybetmeden bir Çocuk Psikiyatristine başvurunuz.")
+            elif risk_puani >= 1:
+                st.warning(f"⚠️ **DİKKAT VE TAKİP GEREKTİRİR ({risk_puani} Madde)**")
+                st.write("Bazı riskli belirtiler mevcut. Çocuğunuzu daha dikkatli gözlemleyin ve şüpheleriniz devam ederse bir uzmana danışın.")
             else:
-                st.success("✅ **Düşük Risk:** Gelişim yaşıyla uyumlu görünüyor.")
+                st.success("✅ **DÜŞÜK RİSK (Gelişim Normal)**")
+                st.write("Çocuğunuzun gelişimi şu an için yaşıyla uyumlu görünüyor.")
 
-            # --- ÖZELLİK 2: PDF RAPOR OLUŞTURMA ---
+            # 4. PDF Rapor Oluşturma
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font("Arial", size=12)
             
-            # Başlık
+            # PDF Başlıkları
             pdf.set_font("Arial", 'B', 16)
-            pdf.cell(200, 10, txt=tr_duzelt("GELISIMSEL TARAMA ON RAPORU"), ln=1, align='C')
+            pdf.cell(190, 10, txt=tr_duzelt("GELISIMSEL TARAMA RAPORU"), ln=1, align='C')
+            
             pdf.set_font("Arial", size=10)
-            pdf.cell(200, 10, txt=tr_duzelt(f"Tarih: {datetime.datetime.now().strftime('%d-%m-%Y')}"), ln=1, align='R')
-            pdf.cell(200, 10, txt=tr_duzelt(f"Cocuk Yasi: {cocuk_ay} Ay"), ln=1, align='L')
+            pdf.cell(190, 10, txt=tr_duzelt(f"Tarih: {datetime.datetime.now().strftime('%d-%m-%Y')}"), ln=1, align='R')
+            pdf.cell(190, 10, txt=tr_duzelt(f"Cocuk Yasi: {cocuk_ay} Ay"), ln=1, align='L')
             
-            pdf.ln(10) # Boşluk
+            pdf.ln(10)
             
-            # Sonuçlar
+            # PDF Sonuç
             pdf.set_font("Arial", 'B', 12)
-            pdf.cell(200, 10, txt=tr_duzelt(f"Toplam Risk Puani: {risk_sayisi}"), ln=1, align='L')
+            pdf.cell(190, 10, txt=tr_duzelt(f"Tespit Edilen Risk Sayisi: {risk_puani}"), ln=1, align='L')
             
             pdf.ln(5)
             pdf.set_font("Arial", size=11)
-            pdf.multi_cell(0, 10, txt=tr_duzelt("Tespit Edilen Riskli Maddeler:"))
+            pdf.cell(190, 10, txt=tr_duzelt("Riskli Bulunan Maddeler:"), ln=1)
             
+            # Riskli maddeleri listele
+            pdf.set_font("Arial", size=10)
             if len(riskli_maddeler) > 0:
                 for madde in riskli_maddeler:
-                    pdf.cell(10) # Girinti
-                    pdf.cell(0, 10, txt=f"- {tr_duzelt(madde)}", ln=1)
+                    pdf.cell(10) # Boşluk
+                    pdf.multi_cell(180, 8, txt=f"- {tr_duzelt(madde)}")
             else:
                 pdf.cell(10)
-                pdf.cell(0, 10, txt=tr_duzelt("- Herhangi bir risk belirtisine rastlanmamistir."), ln=1)
-                
+                pdf.cell(180, 10, txt=tr_duzelt("- Herhangi bir risk belirtisine rastlanmamistir."), ln=1)
+            
             pdf.ln(20)
             pdf.set_font("Arial", 'I', 8)
-            pdf.multi_cell(0, 5, txt=tr_duzelt("Bu rapor tibbi bir tani degildir. Adnan Menderes Universitesi Ozel Egitim Projesi kapsaminda olusturulmustur."))
+            pdf.multi_cell(190, 5, txt=tr_duzelt("NOT: Bu belge tibbi bir tani degildir. Adnan Menderes Universitesi Ozel Egitim Bolumu ogrenci projesi kapsaminda on degerlendirme amaciyla olusturulmustur."))
 
-            # PDF Çıktısı
-            pdf_dosyasi = pdf.output(dest='S').encode('latin-1')
-            
+            # PDF İndirme Butonu
+            pdf_cikti = pdf.output(dest='S').encode('latin-1')
             st.download_button(
-                label="📄 Doktor İçin Raporu İndir (PDF)",
-                data=pdf_dosyasi,
-                file_name="Gelisim_Raporu.pdf",
+                label="📄 Sonuç Raporunu İndir (PDF)",
+                data=pdf_cikti,
+                file_name="Gelisim_Tarama_Raporu.pdf",
                 mime="application/pdf"
             )
